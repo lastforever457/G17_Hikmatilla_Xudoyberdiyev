@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import {BrowserRouter} from "react-router-dom";
 import TabContextProvider from "./contexts/TabContext";
+import ImagesContext from "./contexts/ImagesContext";
 
 const root = ReactDOM.createRoot(
     document.getElementById('root') as HTMLElement
@@ -11,9 +12,11 @@ const root = ReactDOM.createRoot(
 root.render(
     <React.StrictMode>
         <BrowserRouter>
-            <TabContextProvider>
-                <App/>
-            </TabContextProvider>
+            <ImagesContext>
+                <TabContextProvider>
+                    <App/>
+                </TabContextProvider>
+            </ImagesContext>
         </BrowserRouter>
     </React.StrictMode>
 );

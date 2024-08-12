@@ -1,28 +1,41 @@
-import React from 'react';
+import React, {useContext, useEffect} from 'react';
 import Tab from "./Tab";
-import {Col, Row, Select} from "antd";
+import {Button, Col, Form, Input, Modal, Row, Select, Space} from "antd";
 import {FaArrowTrendDown, FaArrowTrendUp} from "react-icons/fa6";
+import {ICard, SubmitButton} from "./Main";
+import axios from "axios";
+import {IoEye, IoEyeOff} from "react-icons/io5";
+import {FaEdit} from "react-icons/fa";
+import {useNavigate} from "react-router-dom";
+import {toastError, toastSuccess} from "./Toastify";
+import SelectCardBg from "./SelectCardBg";
+import {ImgContext} from "../contexts/ImagesContext";
 
-function MyCards() {
+function MyCards({openModal, setOpenModal}: {
+    openModal: boolean,
+    setOpenModal: React.Dispatch<React.SetStateAction<boolean>>
+}) {
+    const images = useContext(ImgContext);
     const [sort, setSort] = React.useState<"balance" | "up" | "down">("balance");
-    const cardBgImages = [
-        {img: "/img_8.png", balance: "24 351 355"},
-        {img: "/img_1.png", balance: "51 351 515"},
-        {img: "/img_2.png", balance: "54 351 215"},
-        {img: "/img_3.png", balance: "74 651 315"},
-        {img: "/img_4.png", balance: "51 351 325"},
-        {img: "/img_5.png", balance: "34 321 215"},
-        {img: "/img_6.png", balance: "73 121 325"},
-        {img: "/img_7.png", balance: "15 681 425"},
-    ]
+    const [cards, setCards] = React.useState<ICard[]>([]);
+    const [see, setSee] = React.useState<boolean>(false);
+
+    useEffect(() => {
+        const fetchCards = async () => {
+            const res = await axios.get<ICard[]>("https://7cbebd0024c779a5.mokky.dev/creditCards")
+            setCards(res.data)
+        }
+
+        fetchCards()
+    }, []);
 
     if (sort === "up") {
-        cardBgImages.sort((a, b) => {
-            return a.balance.trim().replace(/\s+/g, "").localeCompare(b.balance.trim().replace(/\s+/g, ""))
+        cards.sort((a, b) => {
+            return a.cardBalance - b.cardBalance
         })
     } else if (sort === "down") {
-        cardBgImages.sort((a, b) => {
-            return b.balance.trim().replace(/\s+/g, "").localeCompare(a.balance.trim().replace(/\s+/g, ""))
+        cards.sort((a, b) => {
+            return b.cardBalance - a.cardBalance
         })
     }
 
@@ -30,9 +43,83 @@ function MyCards() {
         setSort(value as "balance" | "up" | "down")
     }
 
-    const allBalance = cardBgImages.reduce((prev, curr) => {
-        return prev + parseInt(curr.balance.trim().replace(/\s+/g, ""))
+    const allBalance = cards.reduce((prev, curr) => {
+        return prev + curr.cardBalance
     }, 0)
+
+    const hideModal = () => {
+        setOpenModal(false);
+    };
+
+    const splitNumber = (number: number): number[] => {
+        const numberStr = number.toString();
+        const chunks: number[] = [];
+        for (let i = 0; i < numberStr.length; i += 4) {
+            chunks.push(parseInt(numberStr.slice(i, i + 4), 10));
+        }
+        return chunks;
+    };
+
+    const showModal = () => {
+        setOpenModal(true);
+    };
+
+    const [form] = Form.useForm();
+    const [open, setOpen] = React.useState(false);
+    const [choosenImage, setChoosenImage] = React.useState<string>("");
+
+    const generateRandomNumber = () => {
+        return Math.floor(Math.random() * 90000000) + 10000000;
+    };
+
+    const prepareEditModal = (card: ICard) => {
+        form.setFieldsValue({
+            user: card.user,
+            cardNumber: card.cardNumber,
+            cardDate: card.cardDate,
+            cardRegion: card.cardRegion,
+            cardType: card.cardType,
+            cardBalance: card.cardBalance
+        })
+    }
+
+    const checkCardType = (string: string) => {
+        if (string === "Uzcard") {
+            return "/uzcard.png"
+        } else if (string === "Mastercard") {
+            return "/mastercard.png"
+        } else if (string === "Visa") {
+            return "visacard.png"
+        }
+    }
+
+    const onFinish = async (values: any) => {
+        console.log('Received values of form: ', values);
+        const data = {
+            user: values.user,
+            cardNumber: values.cardNumber,
+            cardDate: values.cardDate,
+            cardRegion: values.cardRegion,
+            cardType: checkCardType(values.cardType),
+            cardBg: choosenImage !== "" ? choosenImage : images[0],
+            cardBalance: generateRandomNumber()
+        }
+        const cardId = localStorage.getItem("cardId")
+        try {
+            await axios.patch(`https://7cbebd0024c779a5.mokky.dev/creditCards/${cardId}`, data)
+            toastSuccess("Card edited successfully")
+            setTimeout(() => {
+                window.location.reload()
+            }, 1000)
+        } catch (e) {
+            console.log(e)
+            toastError("Error adding card")
+        }
+    };
+
+    const showDrawer = () => {
+        setOpen(true);
+    };
 
     return (
         <div className="px-20 py-10 min-h-[100vh]">
@@ -53,27 +140,105 @@ function MyCards() {
                             }]}></Select>
                 </div>
                 <p>
-                    All cards: <span className={"text-lg font-semibold"}>{cardBgImages.length}</span>
+                    All cards: <span className={"text-lg font-semibold"}>{cards.length}</span>
                 </p>
                 <p>
                     Your balance: <span className={"text-lg font-semibold"}>{allBalance.toLocaleString()}</span>
                 </p>
             </div>
             <Row>
-                {cardBgImages.map(img => (
-                    <Col xs={24} sm={24} md={12} lg={8}>
-                        <div className="p-2 relative" style={{
-                            height: "100%"
-                        }}>
-                            <img src={img.img} alt="card" className={"h-[100%] w-[100%]"} style={{
-                                backgroundSize: "cover",
-                            }}/>
-                            <span
-                                className={"absolute top-10 text-white sm:text-md lg:text-2xl font-semibold left-1/2 -translate-x-1/2"}>{img.balance}</span>
-                        </div>
-                    </Col>
-                ))}
+                {cards.map(card => {
+                    const numberChunks = splitNumber(card.cardNumber);
+                    return (
+                        <Col xs={24} sm={24} md={24} lg={8} key={card.id}>
+                            <div className="p-1">
+                                <div
+                                    className="px-10 py-5 text-white relative flex flex-col justify-around rounded-3xl bg-cover bg-center"
+                                    style={{
+                                        height: "300px",
+                                        backgroundImage: `url(${card.cardBg || ""})`,
+                                    }}>
+                                    <div className="flex justify-between items-end gap-3">
+                                        <img src="/credit-card-chip.png" alt="chip" width={70}/>
+                                        <p className={"p-0 m-0 text-2xl"}>{card.cardBalance.toLocaleString()}</p>
+                                        <img src={card.cardType} alt="card-type"
+                                             width={card.cardType === "/uzcard.png" ? 40 : 70}/>
+                                    </div>
+                                    <div className="text-xl">
+                                        <div className="flex justify-center items-center gap-3">
+                                            <p style={{letterSpacing: "2px"}}
+                                               className={"text-3xl text-center"}>{see ? `${numberChunks[0]} ${numberChunks[1]} ${numberChunks[2]} ${numberChunks[3]}` : `**** **** **** ${numberChunks[3]}`}</p>
+                                            {see
+                                                ?
+                                                <span className={"text-xl cursor-pointer"} onClick={() => setSee(!see)}><IoEye/></span>
+                                                : <span className={"text-xl cursor-pointer"}
+                                                        onClick={() => setSee(!see)}><IoEyeOff/></span>
+                                            }
+                                        </div>
+                                        <p className={"text-xl text-center"}>{card.cardDate}</p>
+                                        <p style={{letterSpacing: "1.5px"}}
+                                           className={"text-xl font-semibold"}>{card.user}</p>
+                                    </div>
+                                    <button onClick={() => {
+                                        showModal()
+                                        localStorage.setItem("cardId", card.id.toString())
+                                        prepareEditModal(card)
+                                    }}
+                                            className={`absolute right-5 bottom-5 text-xl`}><FaEdit/>
+                                    </button>
+                                </div>
+                            </div>
+                        </Col>
+                    )
+                })}
             </Row>
+            <Modal
+                title="Edit card"
+                open={openModal}
+                footer={null}
+                onCancel={() => {
+                    setOpenModal(false)
+                }}
+            >
+                <Form form={form} onFinish={onFinish} name="validateOnly" layout="vertical"
+                      autoComplete="off">
+                    <Form.Item name="user" label="Who is" rules={[{required: true}]}>
+                        <Input className={"text-lg"}/>
+                    </Form.Item>
+                    <Form.Item name="cardNumber" label="Payment details" rules={[{required: true}]}>
+                        <Input className={"my-0.5 text-lg"} placeholder={"Card number"}/>
+                    </Form.Item>
+                    <Form.Item name="cardDate" rules={[{required: true}]}>
+                        <Input className={"my-0.5 text-lg"} placeholder={"Expire date"}/>
+                    </Form.Item>
+                    <Form.Item name="cardType" rules={[{required: true}]}>
+                        <Select placeholder={"Card Type"} options={[
+                            {value: "Uzcard", label: <span>Uzcard</span>},
+                            {value: "Mastercard", label: <span>Mastercard</span>},
+                            {value: "Visa", label: <span>Visa</span>}
+                        ]}/>
+                    </Form.Item>
+                    <Form.Item name="cardRegion" rules={[{required: true}]}>
+                        <Select placeholder={"Card Region"} options={[
+                            {value: "Uzbekistan", label: <span>Uzbekistan</span>},
+                            {value: "England", label: <span>England</span>},
+                            {value: "Russia", label: <span>Russia</span>}
+                        ]}/>
+                    </Form.Item>
+                    <Form.Item label={"Card background"} name={"cardBg"}>
+                        <Button type="primary" onClick={showDrawer}>
+                            Open
+                        </Button>
+                    </Form.Item>
+                    <Form.Item>
+                        <Space>
+                            <SubmitButton form={form}>Submit</SubmitButton>
+                            <Button htmlType="reset">Reset</Button>
+                        </Space>
+                    </Form.Item>
+                </Form>
+            </Modal>
+            <SelectCardBg open={open} setOpen={setOpen} choosenImage={choosenImage} setChoosenImage={setChoosenImage}/>
         </div>
     );
 }
