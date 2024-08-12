@@ -1,12 +1,11 @@
 import React, {useContext, useEffect} from 'react';
 import Tab from "./Tab";
 import {Button, Col, Form, Input, Modal, Row, Select, Space} from "antd";
-import {FaArrowTrendDown, FaArrowTrendUp} from "react-icons/fa6";
+import {FaArrowTrendDown, FaArrowTrendUp, FaTrashCan} from "react-icons/fa6";
 import {ICard, SubmitButton} from "./Main";
 import axios from "axios";
 import {IoEye, IoEyeOff} from "react-icons/io5";
 import {FaEdit} from "react-icons/fa";
-import {useNavigate} from "react-router-dom";
 import {toastError, toastSuccess} from "./Toastify";
 import SelectCardBg from "./SelectCardBg";
 import {ImgContext} from "../contexts/ImagesContext";
@@ -47,9 +46,6 @@ function MyCards({openModal, setOpenModal}: {
         return prev + curr.cardBalance
     }, 0)
 
-    const hideModal = () => {
-        setOpenModal(false);
-    };
 
     const splitNumber = (number: number): number[] => {
         const numberStr = number.toString();
@@ -121,6 +117,19 @@ function MyCards({openModal, setOpenModal}: {
         setOpen(true);
     };
 
+    const deleteCard = async (id: number) => {
+        try {
+            await axios.delete(`https://7cbebd0024c779a5.mokky.dev/creditCards/${id}`)
+            toastSuccess("Card deleted successfully")
+            setTimeout(() => {
+                window.location.reload()
+            }, 1000)
+        } catch (e) {
+            console.log(e)
+            toastError("Error deleting card")
+        }
+    }
+
     return (
         <div className="px-20 py-10 min-h-[100vh]">
             <img src="/img.png" alt="logo" width={120} className={"my-3"}/>
@@ -179,6 +188,11 @@ function MyCards({openModal, setOpenModal}: {
                                         <p style={{letterSpacing: "1.5px"}}
                                            className={"text-xl font-semibold"}>{card.user}</p>
                                     </div>
+                                    <button onClick={async () => {
+                                        await deleteCard(card.id)
+                                    }}
+                                            className={`absolute right-14 bottom-5 text-xl`}><FaTrashCan/>
+                                    </button>
                                     <button onClick={() => {
                                         showModal()
                                         localStorage.setItem("cardId", card.id.toString())
