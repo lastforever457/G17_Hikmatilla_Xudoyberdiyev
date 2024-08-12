@@ -1,10 +1,16 @@
 import React from 'react';
 import './App.css';
+import Main from "./components/Main";
+import {Route, Routes} from "react-router-dom";
+import MyCards from "./components/MyCards";
 
 function App() {
     return (
         <div className="App">
-            <h1 className="text-red-500 text-2xl">vsfbfeb</h1>
+            <Routes>
+                <Route path="/" element={<Main/>}/>
+                <Route path="/my-cards" element={<MyCards/>}/>
+            </Routes>
         </div>
     );
 }
